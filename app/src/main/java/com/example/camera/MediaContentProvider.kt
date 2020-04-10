@@ -100,7 +100,7 @@ class MediaContentProvider : ContentProvider() {
 
     @Throws(FileNotFoundException::class)
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor? {
-        val f = File(context!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "openFile()Temp.jpg")
+        val f = File(context!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "openFileTemp.jpg")
         f.delete()
         try {
             f.createNewFile()
