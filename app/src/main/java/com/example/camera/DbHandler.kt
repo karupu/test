@@ -1,8 +1,11 @@
 package com.example.camera
 
+import android.content.ContentValues
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import android.net.Uri
+import android.util.Log
 
 class DbHandler(context: Context?) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
@@ -15,16 +18,14 @@ class DbHandler(context: Context?) : SQLiteOpenHelper(context, DATABASE_NAME, nu
         const val TABLE_IMAGES = "images"
         const val IMAGE_ID = "_id"
         const val IMAGE_FILE_NAME = "fileName"
-        const val IMAGE_URI = "uri"
-        const val IMAGE_CREATED_ON = "contactCreationTimeStamp"
-        val ALL_COLUMNS = arrayOf(IMAGE_ID, IMAGE_FILE_NAME, IMAGE_URI, IMAGE_CREATED_ON)
+        const val IMAGE_FILE_URI = "uri"
+        val ALL_COLUMNS = arrayOf(IMAGE_ID, IMAGE_FILE_NAME, IMAGE_FILE_URI)
 
         //Create Table
         private const val CREATE_TABLE = "CREATE TABLE " + TABLE_IMAGES + " (" +
                 IMAGE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 IMAGE_FILE_NAME + " TEXT, " +
-                IMAGE_URI + " TEXT, " +
-                IMAGE_CREATED_ON + " TEXT default CURRENT_TIMESTAMP" +
+                IMAGE_FILE_URI + " TEXT " +
                 ")"
     }
 
@@ -35,5 +36,18 @@ class DbHandler(context: Context?) : SQLiteOpenHelper(context, DATABASE_NAME, nu
     override fun onUpgrade(sqLiteDatabase: SQLiteDatabase, i: Int, i1: Int) {
         sqLiteDatabase.execSQL("DROP TABLE IF EXISTS $TABLE_IMAGES")
         onCreate(sqLiteDatabase)
+    }
+
+    fun addImageFileImageTable(uri: Uri, contentValues: ContentValues) {
+        val db = writableDatabase
+        db.insert(TABLE_IMAGES, null, contentValues)
+        db.close()
+        Log.d("STATUSCHECK", "in DbHandler, addImageFileImageTable(). content values: ${contentValues}")
+    }
+
+    fun removeImageFileImageTable(uri: Uri) {
+        val db = writableDatabase
+        db.delete(TABLE_IMAGES, "uri = ?", arrayOf(uri.toString()))
+        db.close()
     }
 }

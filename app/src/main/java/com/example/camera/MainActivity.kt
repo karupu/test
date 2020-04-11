@@ -1,10 +1,11 @@
 package com.example.camera
 
-import android.Manifest.permission.CAMERA
-import android.Manifest.permission.READ_EXTERNAL_STORAGE
+import android.Manifest.permission.*
 import android.app.Activity
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.Environment
@@ -18,6 +19,7 @@ import androidx.core.content.FileProvider
 import kotlinx.android.synthetic.main.activity_main.*
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.io.IOException
 import java.security.GeneralSecurityException
 import java.text.SimpleDateFormat
@@ -80,15 +82,38 @@ class MainActivity : AppCompatActivity() {
             val picture = BitmapFactory.decodeByteArray (decrypted, 0, decrypted.size)
             ivImage.setImageBitmap(picture)
 
-            saveDecryptedImagePath(decrypted)
+            saveDecryptedImagePath(picture)
 
         } catch (e: GeneralSecurityException) {
             e.printStackTrace()
         }
     }
 
-    fun saveDecryptedImagePath(decryptedImage: ByteArray) {
+    fun saveDecryptedImagePath(image: Bitmap) {
+        //create file
+        val tempFileName = "temporaryImage.Jpg"
+        val savedFile = File(applicationContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES), tempFileName)
+        if (savedFile.exists()){
+            savedFile.delete()
+        }
+        //create stream
+        val stream = FileOutputStream(savedFile)
+        image.compress(Bitmap.CompressFormat.JPEG, 100, stream)
+        stream.flush()
+        stream.close()
 
+        val savedFileUri = FileProvider.getUriForFile(applicationContext, "com.example.camera.fileprovider", savedFile)
+        Log.d("STATUSCHECK", "middle of SaveDecryptedImagePath() savedFile uri: ${savedFile.absolutePath}")
+
+        //save new temp image URI to provider
+        val contentValues = ContentValues()
+        contentValues.put(DbHandler.IMAGE_FILE_NAME, tempFileName)
+        contentValues.put(DbHandler.IMAGE_FILE_URI, savedFileUri.toString())
+        val dbHandler = DbHandler(applicationContext)
+        dbHandler.addImageFileImageTable(savedFileUri, contentValues)
+        Log.d("STATUSCHECK", "about to save image info to table, contentvalues: $contentValues")
+        val tempImage = contentResolver.query(MediaContentProvider.CONTENT_URI, arrayOf(DbHandler.IMAGE_FILE_URI), null, null)
+        Log.d("STATUSCHECK", "end of saveDecryptedImagePath() tempImage URI save check: ${tempImage.toString()}")
     }
 
     fun openCamera() {
@@ -101,11 +126,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (imageFile != null) {
-            val imageUri = FileProvider.getUriForFile(
-                applicationContext,
-                "com.example.camera.fileprovider",
-                imageFile!!
-            )
+            val imageUri = FileProvider.getUriForFile(applicationContext, "com.example.camera.fileprovider", imageFile!!)
             captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
             Log.d("STATUSCHECK", "MAINACTIVITY: uri before startActivityForResult(): $imageUri")
             startActivityForResult(captureIntent, TAKE_IMAGE_REQUEST_CODE)
@@ -115,34 +136,21 @@ class MainActivity : AppCompatActivity() {
     @Throws(IOException::class)
     fun createTempFile(): File {
         val timeStamp: String = SimpleDateFormat("yyyymmdd_hhmmss").format(Date())
+        val prefix = "JPEG_${timeStamp}_"
+        val suffix = ".jpg"
         val storageDir: File = getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!
-        return File.createTempFile(
-            "JPEG_${timeStamp}_", /* prefix */
-            ".jpg", /* suffix */
-            storageDir /* directory */
-        ).apply {
-            // Save a file: path for use with ACTION_VIEW intents
+        return File.createTempFile(prefix, suffix, storageDir).apply {
             imagePath = absolutePath
         }
     }
 
     private fun checkPersmission(): Boolean {
-        return (ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.CAMERA
-        ) == PackageManager.PERMISSION_GRANTED
-                && ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.READ_EXTERNAL_STORAGE
-        ) == PackageManager.PERMISSION_GRANTED)
+        return (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+                && ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED)
     }
 
     private fun requestPermission() {
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(READ_EXTERNAL_STORAGE, CAMERA),
-            TAKE_IMAGE_REQUEST_CODE
-        )
+        ActivityCompat.requestPermissions(this, arrayOf(READ_EXTERNAL_STORAGE, CAMERA), TAKE_IMAGE_REQUEST_CODE)
     }
 
     override fun onRequestPermissionsResult(

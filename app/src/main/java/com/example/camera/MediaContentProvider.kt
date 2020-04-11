@@ -8,7 +8,6 @@ import android.database.Cursor
 import android.database.SQLException
 import android.database.sqlite.SQLiteDatabase
 import android.net.Uri
-import android.os.CancellationSignal
 import android.os.Environment
 import android.os.ParcelFileDescriptor
 import java.io.File
@@ -21,7 +20,9 @@ class MediaContentProvider : ContentProvider() {
     companion object {
         private const val AUTHORITY = "com.example.camera.mediacontentprovider"
         private const val BASE_PATH = "camera"
+        private const val IMAGE_PATH = "image"
         val CONTENT_URI = Uri.parse("content://$AUTHORITY/$BASE_PATH")
+
         private const val IMAGES = 1
         private const val FILE_NAME = 2
         private const val URI = 3
@@ -36,8 +37,8 @@ class MediaContentProvider : ContentProvider() {
             MIME_TYPES[".jpeg"] = "image/jpeg"
 
             uriMatcher!!.addURI(AUTHORITY, BASE_PATH, IMAGES)
-            uriMatcher.addURI(AUTHORITY, "$BASE_PATH/1", FILE_NAME)
-            uriMatcher.addURI(AUTHORITY, "$BASE_PATH/2", URI)
+            uriMatcher.addURI(AUTHORITY, "$BASE_PATH/$IMAGE_PATH/", FILE_NAME)
+            uriMatcher.addURI(AUTHORITY, "$BASE_PATH/$IMAGE_PATH/", URI)
         }
     }
 
@@ -73,8 +74,8 @@ class MediaContentProvider : ContentProvider() {
     }
 
     override fun onCreate(): Boolean {
-        val helper = DbHandler(context)
-        database = helper.writableDatabase
+        val dbHandler = DbHandler(context)
+        database = dbHandler.writableDatabase
         return true
     }
 
@@ -85,7 +86,7 @@ class MediaContentProvider : ContentProvider() {
             FILE_NAME -> database!!.query(DbHandler.TABLE_IMAGES, DbHandler.ALL_COLUMNS,
                 null, null, null, null, DbHandler.IMAGE_FILE_NAME + " ASC")
             URI       -> database!!.query(DbHandler.TABLE_IMAGES, DbHandler.ALL_COLUMNS,
-                null, null, null, null, DbHandler.IMAGE_URI + " ASC")
+                null, null, null, null, DbHandler.IMAGE_FILE_URI + " ASC")
             else     -> throw IllegalArgumentException("This is an Unknown URI $uri")
         }
         cursor.setNotificationUri(context!!.contentResolver, uri)
