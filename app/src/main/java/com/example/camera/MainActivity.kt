@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
         private val PERMISSION_REQUEST_CODE: Int = 101
         var imagePath: String? = null
         var imageFile: File? = null
+        var picture: Bitmap? = null
     }
 
 
@@ -53,7 +54,9 @@ class MainActivity : AppCompatActivity() {
             Log.d("STATUSCHECK", "MAINACTIVITY: onActivityResult() uri: $imagePath")
             if (data != null) {
                 decryptAndDisplayImage(data)
+                saveDecryptedImagePath(picture!!)
             }
+//            ivImage.setImageBitmap(BitmapFactory.decodeFile(imagePath))
         }
     }
 
@@ -79,10 +82,11 @@ class MainActivity : AppCompatActivity() {
             )
 
             val decrypted = AesCbcWithIntegrity.decrypt (cipherTextIvMac, keys)
-            val picture = BitmapFactory.decodeByteArray (decrypted, 0, decrypted.size)
+            picture = BitmapFactory.decodeByteArray (decrypted, 0, decrypted.size)
             ivImage.setImageBitmap(picture)
 
-            saveDecryptedImagePath(picture)
+            //delete encrypted file
+            imageFile!!.delete()
 
         } catch (e: GeneralSecurityException) {
             e.printStackTrace()
@@ -91,7 +95,7 @@ class MainActivity : AppCompatActivity() {
 
     fun saveDecryptedImagePath(image: Bitmap) {
         //create file
-        val tempFileName = "temporaryImage.Jpg"
+        val tempFileName = "temporaryDecryptedImage.Jpg"
         val savedFile = File(applicationContext.getExternalFilesDir(Environment.DIRECTORY_PICTURES), tempFileName)
         if (savedFile.exists()){
             savedFile.delete()
@@ -103,7 +107,7 @@ class MainActivity : AppCompatActivity() {
         stream.close()
 
         val savedFileUri = FileProvider.getUriForFile(applicationContext, "com.example.camera.fileprovider", savedFile)
-        Log.d("STATUSCHECK", "middle of SaveDecryptedImagePath() savedFile uri: ${savedFile.absolutePath}")
+        Log.d("STATUSCHECK", "middle of SaveDecryptedImagePath() savedFile absolute path: ${savedFile.absolutePath}; savedFileUri : $savedFileUri")
 
         //save new temp image URI to provider
         val contentValues = ContentValues()
@@ -128,7 +132,7 @@ class MainActivity : AppCompatActivity() {
         if (imageFile != null) {
             val imageUri = FileProvider.getUriForFile(applicationContext, "com.example.camera.fileprovider", imageFile!!)
             captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
-            Log.d("STATUSCHECK", "MAINACTIVITY: uri before startActivityForResult(): $imageUri")
+            Log.d("STATUSCHECK", "MAINACTIVITY: uri before startActivityForResult(): imagePath: $imagePath; imageUri: $imageUri")
             startActivityForResult(captureIntent, TAKE_IMAGE_REQUEST_CODE)
         }
     }
